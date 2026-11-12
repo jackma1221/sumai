@@ -1,0 +1,9 @@
+hm:
+  db:
+    host: 127.0.0.1 # 本地 MySQL
+    pw: root       # 本地 MySQL 密码
+  redis:
+    host: 127.0.0.1
+    port: 6379
+    database: 0
+
