@@ -18,10 +18,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -67,6 +70,28 @@ public class SearchController {
     public int rebuild() throws Exception {
         itemIndexService.dropIndex();
         return itemIndexService.rebuildAll();
+    }
+
+    @ApiOperation("搜索筛选项（品牌/分类），供门户筛选面板渲染")
+    @PostMapping("/filters")
+    public Map<String, List<String>> filters(@RequestBody ItemPageQuery query) {
+        try {
+            return itemIndexService.filterOptions(query);
+        } catch (Exception e) {
+            log.warn("ES 筛选项查询失败，返回空筛选：{}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    @ApiOperation("搜索关键字联想")
+    @GetMapping("/suggestion")
+    public List<String> suggestion(ItemPageQuery query) {
+        try {
+            return itemIndexService.suggest(query);
+        } catch (Exception e) {
+            log.warn("ES 联想查询失败，返回空列表：{}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private PageDTO<ItemDTO> searchByDb(ItemPageQuery query) {

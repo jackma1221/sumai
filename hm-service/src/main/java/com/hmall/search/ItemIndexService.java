@@ -36,7 +36,10 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 商品 ES 索引与检索服务。
@@ -246,6 +249,49 @@ public class ItemIndexService {
             }
         }
         return facets;
+    }
+
+    /**
+     * 门户搜索页的筛选栏数据：{品牌: [...], 分类: [...]}。
+     * 只带关键字与状态条件，不带已选过滤项，保证切换某个品牌时其它品牌仍可选。
+     */
+    public Map<String, List<String>> filterOptions(ItemPageQuery query) throws IOException {
+        Map<String, List<String>> options = new LinkedHashMap<>();
+        options.put("brand", facetValues(query, "brand"));
+        options.put("category", facetValues(query, "category"));
+        return options;
+    }
+
+    private List<String> facetValues(ItemPageQuery query, String field) throws IOException {
+        List<ItemSearchResult.Facet> facets = facets(query, field);
+        List<String> values = new ArrayList<>(facets.size());
+        for (ItemSearchResult.Facet facet : facets) {
+            values.add(facet.getName());
+        }
+        return values;
+    }
+
+    /**
+     * 搜索框联想词：用关键字命中的商品做一次品牌聚合，返回出现最多的品牌名。
+     */
+    public List<String> suggest(ItemPageQuery query) throws IOException {
+        if (StrUtil.isBlank(query.getKey())) {
+            return Collections.emptyList();
+        }
+        BoolQueryBuilder bool = buildQuery(query, false);
+        SearchSourceBuilder source = new SearchSourceBuilder()
+                .query(bool)
+                .size(0)
+                .aggregation(AggregationBuilders.terms("suggestAgg").field("brand").size(10));
+        SearchResponse response = restHighLevelClient.search(new SearchRequest(INDEX).source(source), RequestOptions.DEFAULT);
+        Terms terms = response.getAggregations().get("suggestAgg");
+        List<String> values = new ArrayList<>();
+        if (terms != null) {
+            for (Terms.Bucket bucket : terms.getBuckets()) {
+                values.add(bucket.getKeyAsString());
+            }
+        }
+        return values;
     }
 
     /**
