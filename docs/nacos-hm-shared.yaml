@@ -1,0 +1,13 @@
+# Nacos 共享配置：dataId=hm-shared.yaml，group=DEFAULT_GROUP
+# 各服务的 application.yaml 通过 spring.config.import: optional:nacos:hm-shared.yaml 引入
+hm:
+  db:
+    host: 127.0.0.1
+    pw: root
+  redis:
+    host: 127.0.0.1
+    port: 6379
+  es:
+    uri: http://127.0.0.1:9200
+  sentinel:
+    dashboard: 127.0.0.1:8858

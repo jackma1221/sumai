@@ -188,3 +188,49 @@ CREATE TABLE `user` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
+-- ==========================================================
+-- 微服务改造新增的 4 张表，凑齐简历里的 12 张核心表
+-- ==========================================================
+CREATE TABLE IF NOT EXISTS `item_stock_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `item_id` bigint NOT NULL COMMENT '商品id',
+  `change_num` int NOT NULL COMMENT '库存变化量，扣减为负、回滚为正',
+  `change_type` varchar(16) NOT NULL COMMENT 'deduct=下单扣减 restore=订单关闭回滚',
+  `remark` varchar(128) DEFAULT NULL COMMENT '备注',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_item` (`item_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品库存变更流水';
+
+CREATE TABLE IF NOT EXISTS `order_status_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_id` bigint NOT NULL COMMENT '订单id',
+  `from_status` int DEFAULT NULL COMMENT '变更前状态，创建时为空',
+  `to_status` int NOT NULL COMMENT '变更后状态',
+  `remark` varchar(128) DEFAULT NULL COMMENT '变更说明',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_order` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单状态流转日志';
+
+CREATE TABLE IF NOT EXISTS `pay_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `pay_order_id` bigint NOT NULL COMMENT '支付单id',
+  `biz_order_no` bigint NOT NULL COMMENT '业务订单号',
+  `amount` int NOT NULL COMMENT '支付金额（分）',
+  `channel` varchar(32) DEFAULT NULL COMMENT '支付渠道',
+  `status` varchar(16) NOT NULL COMMENT 'success/fail',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_pay_order` (`pay_order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付流水';
+
+CREATE TABLE IF NOT EXISTS `search_hot_word` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `keyword` varchar(64) NOT NULL COMMENT '搜索关键词',
+  `search_count` int NOT NULL DEFAULT '0' COMMENT '搜索次数',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_keyword` (`keyword`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='搜索热词统计';
+

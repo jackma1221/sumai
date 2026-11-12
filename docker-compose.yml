@@ -1,4 +1,5 @@
 services:
+  # ---------- 基础设施 ----------
   mysql:
     image: mysql:8.0
     container_name: hmall-mysql
@@ -10,7 +11,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      # 首次启动自动执行建表脚本；如需商品数据，把 hmall.sql 放进该目录一起挂载
+      # 首次启动自动执行 12 张表的建表脚本
       - ./docker/mysql-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
@@ -64,6 +65,25 @@ services:
       timeout: 10s
       retries: 10
 
+  # 注册中心 + 配置中心，standalone 模式（内嵌 derby 存储，无需再挂数据库）
+  nacos:
+    image: nacos/nacos-server:v2.2.3
+    container_name: hmall-nacos
+    restart: always
+    environment:
+      MODE: standalone
+      PREFER_HOST_MODE: hostname
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      TZ: Asia/Shanghai
+    ports:
+      - "8848:8848"   # 控制台 http://localhost:8848/nacos
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8848/nacos/v1/console/health/readiness || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   sentinel-dashboard:
     image: bladex/sentinel-dashboard:1.8.6
     container_name: hmall-sentinel
@@ -74,10 +94,43 @@ services:
     ports:
       - "8858:8858"
 
-  hm-service:
-    build: .
-    container_name: hmall-app
+  # ---------- 5 个业务服务 ----------
+  # 公共环境变量：容器内互访用服务名，注册到 nacos 容器
+  x-service-env: &service-env
+    TZ: Asia/Shanghai
+    NACOS_ADDR: nacos:8848
+    HM_DB_HOST: mysql
+    HM_REDIS_HOST: redis
+    HM_ES_URI: http://elasticsearch:9200
+    HM_MQ_HOST: rabbitmq
+    HM_SENTINEL_DASHBOARD: sentinel-dashboard:8858
+
+  hm-user:
+    build:
+      context: .
+      args:
+        MODULE: hm-user
+    container_name: hmall-user
     restart: always
+    environment: *service-env
+    ports:
+      - "8084:8084"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  hm-item:
+    build:
+      context: .
+      args:
+        MODULE: hm-item
+    container_name: hmall-item
+    restart: always
+    environment: *service-env
+    ports:
+      - "8081:8081"
     depends_on:
       mysql:
         condition: service_healthy
@@ -87,8 +140,64 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
-      TZ: Asia/Shanghai
+      nacos:
+        condition: service_healthy
+
+  hm-trade:
+    build:
+      context: .
+      args:
+        MODULE: hm-trade
+    container_name: hmall-trade
+    restart: always
+    environment: *service-env
+    ports:
+      - "8082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  hm-pay:
+    build:
+      context: .
+      args:
+        MODULE: hm-pay
+    container_name: hmall-pay
+    restart: always
+    environment: *service-env
+    ports:
+      - "8083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+
+  # 网关最后启动，它是唯一对外入口（8080）
+  hm-gateway:
+    build:
+      context: .
+      args:
+        MODULE: hm-gateway
+    container_name: hmall-gateway
+    restart: always
+    environment: *service-env
     ports:
       - "8080:8080"
+    depends_on:
+      nacos:
+        condition: service_healthy
+      hm-item:
+        condition: service_started
+      hm-trade:
+        condition: service_started
+      hm-pay:
+        condition: service_started
+      hm-user:
+        condition: service_started

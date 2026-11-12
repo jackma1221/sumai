@@ -1,0 +1,65 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: item-service
+  config:
+    import: optional:nacos:hm-shared.yaml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+      config:
+        server-addr: ${NACOS_ADDR:127.0.0.1:8848}
+        file-extension: yaml
+  datasource:
+    url: jdbc:mysql://${hm.db.host:127.0.0.1}:3306/hmall?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: ${hm.db.pw:root}
+  redis:
+    host: ${hm.redis.host:127.0.0.1}
+    port: ${hm.redis.port:6379}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 16
+        max-idle: 16
+        min-idle: 4
+        max-wait: 1000ms
+  elasticsearch:
+    uris: ${hm.es.uri:http://127.0.0.1:9200}
+    connection-timeout: 5s
+    socket-timeout: 10s
+  rabbitmq:
+    host: ${hm.mq.host:127.0.0.1}
+    port: ${hm.mq.port:5672}
+    username: ${hm.mq.username:guest}
+    password: ${hm.mq.password:guest}
+    virtual-host: /
+    listener:
+      simple:
+        default-requeue-rejected: false
+        prefetch: 10
+        concurrency: 2
+mybatis-plus:
+  configuration:
+    default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
+  global-config:
+    db-config:
+      update-strategy: not_null
+      id-type: auto
+logging:
+  level:
+    com.hmall: debug
+  pattern:
+    dateformat: HH:mm:ss:SSS
+  file:
+    path: "logs/${spring.application.name}"
+hm:
+  sentinel:
+    dashboard: ${hm.sentinel.dashboard:127.0.0.1:8858}
+    item-qps: 30
+  order:
+    delay-ttl-ms: 60000
