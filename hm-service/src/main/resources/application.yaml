@@ -21,6 +21,22 @@ spring:
         max-idle: 16
         min-idle: 4
         max-wait: 1000ms
+  elasticsearch:
+    uris: ${hm.es.uri:http://127.0.0.1:9200}
+    connection-timeout: 5s
+    socket-timeout: 10s
+  rabbitmq:
+    host: ${hm.mq.host:127.0.0.1}
+    port: ${hm.mq.port:5672}
+    username: ${hm.mq.username:guest}
+    password: ${hm.mq.password:guest}
+    virtual-host: /
+    listener:
+      simple:
+        # 消费失败不重新入队，避免坏消息无限重投打满 CPU
+        default-requeue-rejected: false
+        prefetch: 10
+        concurrency: 2
 mybatis-plus:
   configuration:
     default-enum-type-handler: com.baomidou.mybatisplus.core.handlers.MybatisEnumTypeHandler
@@ -56,6 +72,13 @@ hm:
     alias: hmall
     password: hmall123
     tokenTTL: 30m
+  order:
+    # 订单超时未支付自动取消的延迟时间，默认 15 分钟
+    delay-ttl-ms: 900000
+  sentinel:
+    dashboard: 127.0.0.1:8858
+    item-qps: 30
+    order-qps: 10
   auth:
     excludePaths:
       - /search/**

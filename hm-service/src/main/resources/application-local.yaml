@@ -6,4 +6,16 @@ hm:
     host: 127.0.0.1
     port: 6379
     database: 0
+  es:
+    uri: http://127.0.0.1:9200
+  mq:
+    host: 127.0.0.1
+    port: 5672
+  order:
+    # 本地演示把超时未支付取消时间调成 60 秒，线上用默认 15 分钟
+    delay-ttl-ms: 60000
+  sentinel:
+    dashboard: 127.0.0.1:8858
+    item-qps: 30
+    order-qps: 10
 

@@ -2,8 +2,11 @@ package com.hmall.controller;
 
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.hmall.common.domain.PageDTO;
 import com.hmall.common.domain.PageQuery;
+import com.hmall.common.exception.CommonException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.domain.dto.ItemDTO;
 import com.hmall.domain.dto.OrderDetailDTO;
@@ -41,8 +44,16 @@ public class ItemController {
 
     @ApiOperation("根据id查询商品")
     @GetMapping("{id}")
+    @SentinelResource(value = "itemDetail", blockHandler = "itemDetailBlock")
     public ItemDTO queryItemById(@PathVariable("id") Long id) {
         return itemService.queryItemById(id);
+    }
+
+    /**
+     * 被 Sentinel 限流时走这里：返回 429，前端可据此做"稍后再试"提示
+     */
+    public ItemDTO itemDetailBlock(Long id, BlockException ex) {
+        throw new CommonException("请求过于频繁，请稍后再试", 429);
     }
 
     @ApiOperation("新增商品")

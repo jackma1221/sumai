@@ -10,6 +10,7 @@ import com.hmall.domain.dto.ItemDTO;
 import com.hmall.domain.dto.OrderDetailDTO;
 import com.hmall.domain.po.Item;
 import com.hmall.mapper.ItemMapper;
+import com.hmall.search.ItemIndexService;
 import com.hmall.service.IItemService;
 import com.hmall.utils.RedisLock;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
     private final ItemCacheService cacheService;
     private final ItemBloomFilter bloomFilter;
     private final RedisLock redisLock;
+    private final ItemIndexService itemIndexService;
 
     @Override
     public ItemDTO queryItemById(Long id) {
@@ -173,7 +175,10 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
 
     @Override
     public void saveItem(ItemDTO item) {
-        save(BeanUtils.copyBean(item, Item.class));
+        Item entity = BeanUtils.copyBean(item, Item.class);
+        save(entity);
+        // 新增商品同步进 ES，保证检索能立刻搜到
+        itemIndexService.upsert(entity);
     }
 
     @Override
@@ -182,6 +187,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
         item.setStatus(null);
         updateById(BeanUtils.copyBean(item, Item.class));
         cacheService.evict(item.getId());
+        itemIndexService.syncById(item.getId());
     }
 
     @Override
@@ -189,11 +195,18 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements II
         Item item = new Item().setId(id).setStatus(status);
         updateById(item);
         cacheService.evict(id);
+        // 下架/删除的商品需要从索引里移除，避免仍被搜出来
+        if (status != null && status != 1) {
+            itemIndexService.delete(id);
+        } else {
+            itemIndexService.syncById(id);
+        }
     }
 
     @Override
     public void deleteItemById(Long id) {
         removeById(id);
         cacheService.evict(id);
+        itemIndexService.delete(id);
     }
 }

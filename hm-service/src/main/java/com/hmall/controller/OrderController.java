@@ -1,5 +1,8 @@
 package com.hmall.controller;
 
+import com.alibaba.csp.sentinel.annotation.SentinelResource;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.hmall.common.exception.CommonException;
 import com.hmall.common.utils.BeanUtils;
 import com.hmall.domain.dto.OrderFormDTO;
 import com.hmall.domain.vo.OrderVO;
@@ -26,8 +29,16 @@ public class OrderController {
 
     @ApiOperation("创建订单")
     @PostMapping
+    @SentinelResource(value = "createOrder", blockHandler = "createOrderBlock")
     public Long createOrder(@RequestBody OrderFormDTO orderFormDTO){
         return orderService.createOrder(orderFormDTO);
+    }
+
+    /**
+     * 下单被限流时返回 429，避免瞬时流量把库存和数据库打穿
+     */
+    public Long createOrderBlock(OrderFormDTO orderFormDTO, BlockException ex) {
+        throw new CommonException("当前下单人数过多，请稍后再试", 429);
     }
 
     @ApiOperation("标记订单已支付")

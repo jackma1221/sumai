@@ -1,0 +1,22 @@
+# Docker Compose 环境专用配置：所有中间件用服务名互访
+hm:
+  db:
+    host: mysql
+    pw: root
+  redis:
+    host: redis
+    port: 6379
+    database: 0
+  es:
+    uri: http://elasticsearch:9200
+  mq:
+    host: rabbitmq
+    port: 5672
+  order:
+    delay-ttl-ms: 900000
+  sentinel:
+    dashboard: sentinel-dashboard:8858
+    item-qps: 30
+    order-qps: 10
+server:
+  port: 8080

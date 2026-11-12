@@ -12,6 +12,8 @@ import com.hmall.domain.dto.OrderFormDTO;
 import com.hmall.domain.po.Order;
 import com.hmall.domain.po.OrderDetail;
 import com.hmall.mapper.OrderMapper;
+import com.hmall.mq.OrderEventProducer;
+import com.hmall.mq.OrderMessage;
 import com.hmall.service.ICartService;
 import com.hmall.service.IItemService;
 import com.hmall.service.IOrderDetailService;
@@ -21,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -53,6 +57,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
     private final IOrderDetailService detailService;
     private final ICartService cartService;
     private final StringRedisTemplate redisTemplate;
+    private final OrderEventProducer orderEventProducer;
 
     @Override
     @Transactional
@@ -71,7 +76,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         }
 
         try {
-            return doCreateOrder(orderFormDTO, detailDTOS, userId);
+            Long orderId = doCreateOrder(orderFormDTO, detailDTOS, userId);
+            // 6. 事务提交后再发 MQ，避免消息先到、事务回滚造成"库存没扣但销量加了"
+            sendOrderMessageAfterCommit(buildMessage(orderId, detailDTOS, userId));
+            return orderId;
         } catch (RuntimeException e) {
             // 下单失败时释放防重标记，允许用户调整后重试
             redisTemplate.delete(submitKey);
@@ -124,6 +132,47 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         order.setStatus(2);
         order.setPayTime(LocalDateTime.now());
         updateById(order);
+    }
+
+    /**
+     * 把下单明细合并成消息体（同一商品出现多次时数量累加）
+     */
+    private OrderMessage buildMessage(Long orderId, List<OrderDetailDTO> detailDTOS, Long userId) {
+        Map<Long, Integer> numMap = detailDTOS.stream()
+                .collect(Collectors.toMap(OrderDetailDTO::getItemId, OrderDetailDTO::getNum, Integer::sum));
+        List<OrderMessage.ItemNum> items = numMap.entrySet().stream()
+                .map(entry -> new OrderMessage.ItemNum(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toList());
+        OrderMessage message = new OrderMessage();
+        message.setOrderId(orderId);
+        message.setUserId(userId);
+        message.setCreateTime(System.currentTimeMillis());
+        message.setItems(items);
+        return message;
+    }
+
+    /**
+     * 事务提交后再发送 MQ 消息；没有事务时直接发送。
+     * 发送失败只记日志，不回滚已成功的订单。
+     */
+    private void sendOrderMessageAfterCommit(OrderMessage message) {
+        Runnable send = () -> {
+            try {
+                orderEventProducer.sendOrderCreated(message);
+            } catch (Exception e) {
+                log.warn("[MQ] 下单消息发送失败，orderId={}，原因={}", message.getOrderId(), e.getMessage());
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    send.run();
+                }
+            });
+        } else {
+            send.run();
+        }
     }
 
     /**
