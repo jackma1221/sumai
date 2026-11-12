@@ -1,4 +1,4 @@
-# 黑马商城微服务版 · 压测与联调报告
+# 速卖商城微服务版 · 压测与联调报告
 
 - 压测时间：2026-11-12
 - 环境：本机 Windows，JDK 11，全部中间件以真实进程运行（MySQL 8 / Redis 5 / Elasticsearch 7.17 / RabbitMQ 3.12 / Nacos 2.2.3 / Sentinel Dashboard 1.8.6）
@@ -111,7 +111,7 @@ GET http://127.0.0.1:8848/nacos/v1/ns/service/list
 {"count":5,"doms":["gateway","user-service","item-service","trade-service","pay-service"]}
 ```
 
-网关路由（`hm-gateway/application.yaml`）：`/items/**、/search/** → lb://item-service`；`/carts/**、/orders/** → lb://trade-service`；`/pay-orders/** → lb://pay-service`；`/users/**、/addresses/** → lb://user-service`。
+网关路由（`sm-gateway/application.yaml`）：`/items/**、/search/** → lb://item-service`；`/carts/**、/orders/** → lb://trade-service`；`/pay-orders/** → lb://pay-service`；`/users/**、/addresses/** → lb://user-service`。
 
 ## 四、复现方式
 
@@ -133,5 +133,5 @@ python pressure.py "http://127.0.0.1:8080/search/items?key=%E6%89%8B%E6%9C%9C" 8
 - 可支撑的简历表述：详情接口 2000+ QPS（实测 2198.5）、失败率 <0.1%（实测 0%）、ES 检索比 MySQL 模糊查询快 50% 以上（实测约 72%）、Sentinel 限流 + 熔断真实生效、6 模块 + Nacos + Gateway + JWT + Feign 全链路可运行。
 - 仍需注意的边界：
   1. 本机无 Docker，`Dockerfile`/`docker-compose.yml` 未实跑，"部署效率提升 80%"属于工程收益描述，不是实测数字；
-  2. "代码复用率提升 30%"为架构收益描述（`hm-common` 与 `hm-api` 被 5 个服务复用），未做代码行级统计；
+  2. "代码复用率提升 30%"为架构收益描述（`sm-common` 与 `sm-api` 被 5 个服务复用），未做代码行级统计；
   3. 压测为本机单实例、单机中间件，未做集群与多副本，QPS 数值不代表生产环境容量。

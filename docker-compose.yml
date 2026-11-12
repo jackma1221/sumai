@@ -2,7 +2,7 @@ services:
   # ---------- 基础设施 ----------
   mysql:
     image: mysql:8.0
-    container_name: hmall-mysql
+    container_name: sm-mysql
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: hmall-redis
+    container_name: sm-redis
     restart: always
     ports:
       - "6379:6379"
@@ -34,7 +34,7 @@ services:
 
   elasticsearch:
     image: elasticsearch:7.17.24
-    container_name: hmall-es
+    container_name: sm-es
     restart: always
     environment:
       discovery.type: single-node
@@ -51,7 +51,7 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.12-management
-    container_name: hmall-rabbitmq
+    container_name: sm-rabbitmq
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: guest
@@ -68,7 +68,7 @@ services:
   # 注册中心 + 配置中心，standalone 模式（内嵌 derby 存储，无需再挂数据库）
   nacos:
     image: nacos/nacos-server:v2.2.3
-    container_name: hmall-nacos
+    container_name: sm-nacos
     restart: always
     environment:
       MODE: standalone
@@ -86,7 +86,7 @@ services:
 
   sentinel-dashboard:
     image: bladex/sentinel-dashboard:1.8.6
-    container_name: hmall-sentinel
+    container_name: sm-sentinel
     restart: always
     environment:
       # 该镜像默认监听 8080，这里统一改成 8858 与本地/应用侧配置保持一致
@@ -105,12 +105,12 @@ services:
     HM_MQ_HOST: rabbitmq
     HM_SENTINEL_DASHBOARD: sentinel-dashboard:8858
 
-  hm-user:
+  sm-user:
     build:
       context: .
       args:
-        MODULE: hm-user
-    container_name: hmall-user
+        MODULE: sm-user
+    container_name: sm-user
     restart: always
     environment: *service-env
     ports:
@@ -121,12 +121,12 @@ services:
       nacos:
         condition: service_healthy
 
-  hm-item:
+  sm-item:
     build:
       context: .
       args:
-        MODULE: hm-item
-    container_name: hmall-item
+        MODULE: sm-item
+    container_name: sm-item
     restart: always
     environment: *service-env
     ports:
@@ -143,12 +143,12 @@ services:
       nacos:
         condition: service_healthy
 
-  hm-trade:
+  sm-trade:
     build:
       context: .
       args:
-        MODULE: hm-trade
-    container_name: hmall-trade
+        MODULE: sm-trade
+    container_name: sm-trade
     restart: always
     environment: *service-env
     ports:
@@ -163,12 +163,12 @@ services:
       nacos:
         condition: service_healthy
 
-  hm-pay:
+  sm-pay:
     build:
       context: .
       args:
-        MODULE: hm-pay
-    container_name: hmall-pay
+        MODULE: sm-pay
+    container_name: sm-pay
     restart: always
     environment: *service-env
     ports:
@@ -180,12 +180,12 @@ services:
         condition: service_healthy
 
   # 网关最后启动，它是唯一对外入口（8080）
-  hm-gateway:
+  sm-gateway:
     build:
       context: .
       args:
-        MODULE: hm-gateway
-    container_name: hmall-gateway
+        MODULE: sm-gateway
+    container_name: sm-gateway
     restart: always
     environment: *service-env
     ports:
@@ -193,11 +193,11 @@ services:
     depends_on:
       nacos:
         condition: service_healthy
-      hm-item:
+      sm-item:
         condition: service_started
-      hm-trade:
+      sm-trade:
         condition: service_started
-      hm-pay:
+      sm-pay:
         condition: service_started
-      hm-user:
+      sm-user:
         condition: service_started

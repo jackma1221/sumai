@@ -1,4 +1,4 @@
-# 启动黑马商城微服务集群（本地开发环境）
+# 启动速卖商城微服务集群（本地开发环境）
 # 前置：MySQL / Redis / Elasticsearch / RabbitMQ / Nacos(8848) 已启动
 $ErrorActionPreference = "Continue"
 $JAVA = "E:\jdk11\jdk-11.0.27_windows-x64_bin\jdk-11.0.27\bin\java.exe"
@@ -6,7 +6,7 @@ $ROOT = Split-Path -Parent $PSScriptRoot
 $LOG  = "E:\hmall\tools\logs"
 if (-not (Test-Path -LiteralPath $LOG)) { New-Item -ItemType Directory -Force -Path $LOG | Out-Null }
 
-$services = @("hm-user", "hm-item", "hm-trade", "hm-pay", "hm-gateway")
+$services = @("sm-user", "sm-item", "sm-trade", "sm-pay", "sm-gateway")
 foreach ($svc in $services) {
     $jar = Join-Path $ROOT "$svc\target\$svc.jar"
     if (-not (Test-Path -LiteralPath $jar)) {

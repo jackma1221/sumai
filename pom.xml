@@ -5,17 +5,17 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.heima</groupId>
-    <artifactId>hmall</artifactId>
+    <artifactId>sumai</artifactId>
     <packaging>pom</packaging>
     <version>1.0.0</version>
     <modules>
-        <module>hm-common</module>
-        <module>hm-api</module>
-        <module>hm-item</module>
-        <module>hm-trade</module>
-        <module>hm-pay</module>
-        <module>hm-user</module>
-        <module>hm-gateway</module>
+        <module>sm-common</module>
+        <module>sm-api</module>
+        <module>sm-item</module>
+        <module>sm-trade</module>
+        <module>sm-pay</module>
+        <module>sm-user</module>
+        <module>sm-gateway</module>
     </modules>
 
     <parent>
